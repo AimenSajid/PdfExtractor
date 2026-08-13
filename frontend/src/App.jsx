@@ -1,44 +1,128 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import PdfExtractor from "./PdfExtractor";
 import FileList from "./FileList";
 import LoginPage from "./LoginPage";
 import { useAuth } from "./AuthContext";
-import { apiFetch } from "./apiConfig";
+import {
+  apiStore,
+  declineImport,
+  getPendingGuestRows,
+  getStore,
+  hasDeclinedImport,
+  localStore,
+} from "./dataStore";
 
 export default function App() {
   const { user, loading, isGuest, isAuthenticated, logout } = useAuth();
   const [files, setFiles] = useState([]);
+  const [error, setError] = useState(null);
+  const [pendingImport, setPendingImport] = useState(0);
+  const [importing, setImporting] = useState(false);
 
-  const fetchFiles = useCallback(async () => {
-    // Guests have no server-side rows; calling the API would only 401.
-    if (!isAuthenticated) return;
-    try {
-      const res = await apiFetch("/api/extractions");
-      if (!res.ok) throw new Error(`Failed to load files (${res.status})`);
-      setFiles(await res.json());
-    } catch (err) {
-      console.error("Could not load files:", err);
+  // Swapping stores is the only place auth state affects data access.
+  const store = useMemo(() => getStore(isAuthenticated), [isAuthenticated]);
+
+  const handleExtracted = useCallback(
+    async (extractionResult) => {
+      try {
+        const row = await store.create(extractionResult);
+        setFiles((prev) => [...prev, row]);
+        setError(null);
+      } catch (err) {
+        // A guest storage write can fail (quota, private mode) -- show it rather
+        // than losing the result silently.
+        console.error("Could not save extraction:", err);
+        setError(err.message);
+      }
+    },
+    [store]
+  );
+
+  const handleUpdate = useCallback(
+    async (id, field, value) => {
+      try {
+        await store.update(id, field, value);
+        setFiles((prev) =>
+          prev.map((file) => (file.id === id ? { ...file, [field]: value } : file))
+        );
+        setError(null);
+      } catch (err) {
+        console.error("Failed to update:", err);
+        setError(err.message);
+      }
+    },
+    [store]
+  );
+
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        await store.remove(id);
+        setFiles((prev) => prev.filter((file) => file.id !== id));
+        setError(null);
+      } catch (err) {
+        console.error("Delete failed:", err);
+        setError(err.message);
+      }
+    },
+    [store]
+  );
+
+  // Clear rows first so signing out never leaves the previous account's documents
+  // on screen, then load whatever the now-current store holds. The cancel flag
+  // keeps an in-flight list from landing after the store has already changed.
+  useEffect(() => {
+    let cancelled = false;
+    setFiles([]);
+    setError(null);
+
+    (async () => {
+      try {
+        const rows = await store.list();
+        if (!cancelled) setFiles(rows);
+      } catch (err) {
+        console.error("Could not load files:", err);
+        if (!cancelled) setError(err.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [store]);
+
+  // Once signed in, notice any documents still held in this browser from a guest
+  // session so they can be adopted into the account instead of appearing lost.
+  useEffect(() => {
+    if (!isAuthenticated || hasDeclinedImport()) {
+      setPendingImport(0);
+      return;
     }
+    setPendingImport(getPendingGuestRows().length);
   }, [isAuthenticated]);
 
-  const handleDelete = useCallback(async (id) => {
+  const handleImportGuestRows = useCallback(async () => {
+    setImporting(true);
     try {
-      const res = await apiFetch(`/api/extractions/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
-      setFiles((prev) => prev.filter((file) => file.id !== id));
+      const rows = getPendingGuestRows();
+      const imported = await apiStore.importMany(rows);
+      // Only discard the local copy once the server has confirmed the rows.
+      localStore.clear();
+      setFiles((prev) => [...prev, ...imported]);
+      setPendingImport(0);
+      setError(null);
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error("Import failed:", err);
+      setError(err.message);
+    } finally {
+      setImporting(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
-
-  // Signing out should not leave the previous account's rows on screen.
-  useEffect(() => {
-    if (!isAuthenticated) setFiles([]);
-  }, [isAuthenticated]);
+  const handleDeclineImport = useCallback(() => {
+    declineImport();
+    setPendingImport(0);
+  }, []);
 
   if (loading) {
     return (
@@ -98,19 +182,50 @@ export default function App() {
           </div>
         )}
 
-        <PdfExtractor onExtracted={fetchFiles} />
+        {pendingImport > 0 && (
+          <div className="mb-6 p-3 rounded border border-blue-300 bg-blue-50 text-blue-900 text-sm flex items-center justify-between gap-4">
+            <span>
+              You have {pendingImport} document{pendingImport === 1 ? "" : "s"}{" "}
+              saved in this browser from before you signed in. Import{" "}
+              {pendingImport === 1 ? "it" : "them"} into your account?
+              <span className="block text-xs text-blue-700 mt-1">
+                The extracted details carry over, but the original PDFs were never
+                uploaded and so cannot be viewed.
+              </span>
+            </span>
+            <span className="flex gap-2 shrink-0">
+              <button
+                onClick={handleImportGuestRows}
+                disabled={importing}
+                className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
+              >
+                {importing ? "Importing..." : "Import"}
+              </button>
+              <button
+                onClick={handleDeclineImport}
+                disabled={importing}
+                className="px-3 py-1 border border-blue-300 rounded disabled:opacity-50"
+              >
+                Not now
+              </button>
+            </span>
+          </div>
+        )}
+
+        <PdfExtractor onExtracted={handleExtracted} />
+
+        {error && (
+          <p className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-700 text-sm">
+            {error}
+          </p>
+        )}
 
         {files.length > 0 ? (
           <FileList
             files={files}
-            onUpdate={(id, field, value) => {
-              setFiles((prev) =>
-                prev.map((file) =>
-                  file.id === id ? { ...file, [field]: value } : file
-                )
-              );
-            }}
+            onUpdate={handleUpdate}
             onDelete={handleDelete}
+            canViewPdf={isAuthenticated}
           />
         ) : (
           <p className="text-gray-500 text-center mt-4">No files uploaded yet.</p>

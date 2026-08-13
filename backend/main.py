@@ -12,6 +12,8 @@ import PyPDF2
 from config import GEMINI_API_KEY, GEMINI_MODEL
 from openai import OpenAI
 from schemas import (
+    MAX_IMPORT_ITEMS,
+    ExtractionImportItem,
     ExtractionOut,
     ExtractionResult,
     ExtractionUpdate,
@@ -188,6 +190,57 @@ def list_extractions(
     user: models.User = Depends(get_current_user),
 ):
     return crud.get_all_extractions(db, user_id=user.id)
+
+@app.post(
+    "/api/extractions/import",
+    response_model=list[ExtractionOut],
+    status_code=201,
+)
+def import_extractions(
+    items: list[ExtractionImportItem],
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Import documents a guest accumulated in localStorage into their account.
+
+    Body is a bare JSON array of metadata objects. Declared before the
+    /api/extractions/{extraction_id} routes so the literal "import" segment is
+    never read as an id.
+
+    The imported rows have no pdf_base64: a guest's uploads were parsed but
+    never stored server-side, so the bytes do not exist. The extracted metadata
+    is all there is to carry over, and the PDF endpoint 404s cleanly for those
+    rows.
+
+    This is deliberately not idempotent -- there is no stable client-side key to
+    deduplicate on, so calling it twice imports twice. The frontend is expected
+    to clear its local store once the import succeeds.
+    """
+    if not items:
+        raise HTTPException(status_code=400, detail="No documents to import")
+
+    if len(items) > MAX_IMPORT_ITEMS:
+        # A 400 rather than a silent truncation: the caller must know that some
+        # of its documents were not imported.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Too many documents in one request "
+                f"(got {len(items)}, limit {MAX_IMPORT_ITEMS})"
+            ),
+        )
+
+    payload = []
+    for item in items:
+        data = item.model_dump()
+        if not (data.get("filename") or "").strip():
+            # ExtractionOut requires a non-null filename, so a record that lost
+            # its name in localStorage would otherwise import fine and then blow
+            # up during response serialisation. Fall back to the title.
+            data["filename"] = (data.get("title") or "").strip() or "Untitled document"
+        payload.append(data)
+
+    return crud.create_extractions_bulk(db, payload, user_id=user.id)
 
 @app.get("/api/extractions/{extraction_id}", response_model=ExtractionOut)
 def get_extraction(

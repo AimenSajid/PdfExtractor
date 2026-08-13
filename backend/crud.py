@@ -75,6 +75,44 @@ def create_extraction(
     db.refresh(extraction)
     return extraction
 
+def create_extractions_bulk(
+    db: Session, items: list[dict], user_id: int
+) -> list[models.Extraction]:
+    """Create one owner-scoped row per metadata dict, in a single transaction.
+
+    Used by the guest -> account import: either every document lands or none
+    does, so a failure part-way through cannot leave a half-imported library.
+
+    pdf_base64 is left NULL on purpose. Guest uploads were never persisted
+    server-side, so there are no bytes to store; the PDF endpoint already 404s
+    cleanly for rows in that state.
+    """
+    extractions = [
+        models.Extraction(
+            filename=item.get("filename"),
+            title=item.get("title"),
+            authors=item.get("authors"),      # keep as JSON
+            year=item.get("year"),
+            doi=item.get("doi"),
+            url=item.get("url"),
+            abstract=item.get("abstract"),
+            conclusion=item.get("conclusion"),
+            pdf_base64=None,
+            user_id=user_id,
+        )
+        for item in items
+    ]
+    if not extractions:
+        return []
+
+    db.add_all(extractions)
+    db.commit()
+    # commit() expires the instances; touching .id reloads each row, which is
+    # what the response model needs anyway.
+    for extraction in extractions:
+        db.refresh(extraction)
+    return extractions
+
 def get_extraction(
     db: Session, extraction_id: int, user_id: int
 ) -> Optional[models.Extraction]:

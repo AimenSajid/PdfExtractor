@@ -1,32 +1,33 @@
 import React, { useState, useRef } from "react";
-import { apiFetch } from "./apiConfig";
+import PdfModal from "./PdfModal";
 
-export default function FileList({ files, onUpdate, onDelete /*, onSelect*/ }) {
+// Presentational only: persistence is the caller's job, handed in via onUpdate /
+// onDelete. This component owns the inline-edit interaction and which row's PDF
+// is open, and nothing else.
+//
+// canViewPdf gates the view action. Guest uploads are never persisted
+// server-side, so for signed-out visitors there is no PDF to open at all.
+export default function FileList({
+  files,
+  onUpdate,
+  onDelete,
+  canViewPdf = false,
+}) {
   const [editingCell, setEditingCell] = useState({ id: null, field: null });
   const [cellValue, setCellValue] = useState("");
+  const [pdfRow, setPdfRow] = useState(null);
   const submittedRef = useRef(false);
 
-  const handleUpdate = async (id, field, value) => {
-    const updatedValue = field === "authors"
-    ? value
-      .split(",")
-      .map(a => a.trim())
-      .filter(a => a.length > 0)  // remove empty strings
-  : value ?? null;
+  const commit = (id, field, value) => {
+    const updatedValue =
+      field === "authors"
+        ? value
+            .split(",")
+            .map((a) => a.trim())
+            .filter((a) => a.length > 0) // remove empty strings
+        : value ?? null;
 
-    try {
-      const res = await apiFetch(`/api/extractions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: updatedValue })
-      });
-      if (!res.ok) throw new Error(`Update failed (${res.status})`);
-
-      onUpdate(id, field, updatedValue);
-
-    } catch (err) {
-      console.error("Failed to update:", err);
-    }
+    onUpdate(id, field, updatedValue);
   };
 
   const startEditing = (fileId, field, value) => {
@@ -35,10 +36,12 @@ export default function FileList({ files, onUpdate, onDelete /*, onSelect*/ }) {
     setCellValue(field === "authors" ? (value || []).join(", ") : value || "");
   };
 
-  const stopEditing = (commit = true) => {
-    if (commit && editingCell.id !== null && !submittedRef.current) {
+  // submittedRef stops a double commit: Enter commits and unmounts the textarea,
+  // and that unmount fires a native blur that would otherwise commit again.
+  const stopEditing = (shouldCommit = true) => {
+    if (shouldCommit && editingCell.id !== null && !submittedRef.current) {
       submittedRef.current = true;
-      handleUpdate(editingCell.id, editingCell.field, cellValue);
+      commit(editingCell.id, editingCell.field, cellValue);
     }
     setEditingCell({ id: null, field: null });
     setCellValue("");
@@ -99,7 +102,16 @@ export default function FileList({ files, onUpdate, onDelete /*, onSelect*/ }) {
                   )}
                 </td>
               ))}
-              <td className="p-2 text-center">
+              <td className="p-2 text-center whitespace-nowrap">
+                {canViewPdf && (
+                  <button
+                    onClick={() => setPdfRow(file)}
+                    className="mr-2 text-blue-600 hover:text-blue-800"
+                    title="View PDF"
+                  >
+                    👁️
+                  </button>
+                )}
                 <button
                   onClick={() => onDelete(file.id)}
                   className="text-red-500 hover:text-red-700"
@@ -112,6 +124,15 @@ export default function FileList({ files, onUpdate, onDelete /*, onSelect*/ }) {
           ))}
         </tbody>
       </table>
+
+      {/* PdfModal never hides itself -- mounting it is what opens it. */}
+      {pdfRow && (
+        <PdfModal
+          extractionId={pdfRow.id}
+          filename={pdfRow.filename}
+          onClose={() => setPdfRow(null)}
+        />
+      )}
     </div>
   );
 }
