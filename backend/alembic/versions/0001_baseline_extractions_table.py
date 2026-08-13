@@ -1,7 +1,7 @@
 """baseline extractions table
 
-Revision ID: f35ae722147f
-Revises: 
+Revision ID: 0001_baseline_extractions
+Revises:
 Create Date: 2026-08-13 03:32:42.654289
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f35ae722147f'
+revision: str = '0001_baseline_extractions'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

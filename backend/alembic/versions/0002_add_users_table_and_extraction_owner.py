@@ -1,7 +1,7 @@
 """add users table and extraction owner
 
-Revision ID: d690fab202ad
-Revises: f35ae722147f
+Revision ID: 0002_users_and_owner
+Revises: 0001_baseline_extractions
 Create Date: 2026-08-13 03:50:13.887428
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd690fab202ad'
-down_revision: Union[str, Sequence[str], None] = 'f35ae722147f'
+revision: str = '0002_users_and_owner'
+down_revision: Union[str, Sequence[str], None] = '0001_baseline_extractions'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
