@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { apiFetch } from "./apiConfig";
 
 export default function PdfExtractor({ onExtracted }) {
   const [file, setFile] = useState(null);
+  // A file input is uncontrolled -- React cannot drive its value, so clearing
+  // the `file` state alone leaves the chosen filename on screen. Resetting the
+  // DOM node is the only way to actually deselect it.
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSlowMessage, setShowSlowMessage] = useState(false);
@@ -41,6 +45,9 @@ export default function PdfExtractor({ onExtracted }) {
   const handleReset = () => {
     setFile(null);
     setError(null);
+    // Clearing the state is not enough -- without this the filename stays
+    // visible, and re-picking the same file would fire no change event.
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
@@ -48,6 +55,7 @@ export default function PdfExtractor({ onExtracted }) {
       <h2 className="text-xl font-bold mb-2">Upload PDF</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
+          ref={fileInputRef}
           type="file"
           accept="application/pdf"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
