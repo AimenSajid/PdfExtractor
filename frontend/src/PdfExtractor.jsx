@@ -28,8 +28,10 @@ export default function PdfExtractor({ onExtracted }) {
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Server error");
+        // FastAPI reports errors as {"detail": "..."}; show that sentence rather
+        // than dumping the raw JSON envelope at the user.
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || `Server error (${res.status})`);
       }
 
       const data = await res.json();

@@ -62,13 +62,8 @@ export default function FileList({
         </thead>
         <tbody>
           {files.map((file, index) => (
-            <tr
-              key={file.id}
-              className="border-b hover:bg-gray-50 cursor-pointer"
-              /*onClick={() => onSelect(file.id)}*/
-            >
+            <tr key={file.id} className="border-b hover:bg-gray-50 cursor-pointer">
               <td className="border px-4 py-2">{index + 1}</td>
-              
               {["title", "year", "authors", "url"].map((field) => (
                 <td
                   key={field}

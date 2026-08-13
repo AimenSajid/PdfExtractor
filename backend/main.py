@@ -9,7 +9,7 @@ import models
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile, os, asyncio, json, re
 import PyPDF2
-from config import GEMINI_API_KEY, GEMINI_MODEL
+from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB
 from openai import OpenAI
 from schemas import (
     MAX_IMPORT_ITEMS,
@@ -37,12 +37,14 @@ origins = [
 
 app = FastAPI()
 
+# allow_credentials is what lets the session cookie travel: the frontend and API
+# are different origins, so a credentialed fetch is rejected without it.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,         # <-- allow React
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],           # GET, POST, PUT, etc.
-    allow_headers=["*"],           # Allow any headers
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
 )
 
 # Schema is owned by Alembic ("alembic upgrade head"), not create_all --
@@ -105,6 +107,28 @@ def call_model_chat(prompt: str) -> str:
     )
     return resp.choices[0].message.content.strip()
 
+async def read_upload_capped(file: UploadFile) -> bytes:
+    """Read an upload, aborting as soon as it exceeds MAX_UPLOAD_BYTES.
+
+    Reading in chunks is the point: a bare `await file.read()` pulls the whole
+    body into memory first, so checking the length afterwards would only notice
+    the problem once the memory had already been spent.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"PDF is larger than the {MAX_UPLOAD_MB} MB limit.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 @app.post("/api/extract", response_model=ExtractionResult)
 async def extract(
     file: UploadFile = File(...),
@@ -114,7 +138,10 @@ async def extract(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDFs are allowed")
 
-    pdf_bytes = await file.read()
+    pdf_bytes = await read_upload_capped(file)
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+
     pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
     tmp_path = None
