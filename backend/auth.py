@@ -18,6 +18,7 @@ import crud
 import database
 import models
 from config import (
+    COOKIE_SAMESITE,
     COOKIE_SECURE,
     GOOGLE_CLIENT_ID,
     JWT_SECRET,
@@ -89,14 +90,24 @@ def set_session_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,          # unreadable from JS, so XSS cannot exfiltrate it
         secure=COOKIE_SECURE,   # must be True once served over HTTPS
-        samesite="lax",
+        # "none" when deployed, so the cookie survives a frontend and API on
+        # separate sites; "lax" locally, where http forbids SameSite=None.
+        samesite=COOKIE_SAMESITE,
         max_age=SESSION_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    # The attributes must match the ones the cookie was set with, or the
+    # browser treats it as a different cookie and logout leaves it in place.
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        httponly=True,
+    )
 
 
 def get_current_user_optional(

@@ -1,0 +1,56 @@
+# Render blueprint for the FastAPI backend.
+#
+# The frontend is not here — it deploys separately to Vercel from frontend/,
+# and reaches this service through VITE_API_BASE_URL.
+#
+# Create the service from this file with Render's "New > Blueprint" flow, or
+# configure the same values by hand in the dashboard.
+
+services:
+  - type: web
+    name: pdf-extractor-api
+    runtime: python
+    plan: free
+    rootDir: backend
+
+    buildCommand: pip install -r requirements.txt
+
+    # $PORT is assigned by Render; binding to a fixed port fails health checks.
+    # Migrations run at release time rather than in the build, so the schema is
+    # only touched once per deploy and never by a scaling event.
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    healthCheckPath: /api/auth/me
+
+    envVars:
+      # Set in the dashboard — never commit these.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: JWT_SECRET
+        # Render generates a strong value once and keeps it across deploys.
+        # Rotating it invalidates every existing session.
+        generateValue: true
+
+      # Comma-separated. Must include the deployed frontend origin, or the
+      # browser blocks every credentialed request to this API.
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+      # Served over HTTPS, so the session cookie needs Secure — which is also
+      # what allows SameSite=None, without which the cookie never reaches a
+      # frontend on a different site.
+      - key: COOKIE_SECURE
+        value: "true"
+
+      # Held in memory and base64-encoded into Postgres, so this bounds both
+      # per-request memory and stored row size. The free plan has 512MB.
+      - key: MAX_UPLOAD_MB
+        value: "10"
+
+      - key: PYTHON_VERSION
+        value: "3.11"

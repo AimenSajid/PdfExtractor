@@ -9,7 +9,13 @@ import models
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile, os, asyncio, json, re
 import PyPDF2
-from config import GEMINI_API_KEY, GEMINI_MODEL, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB
+from config import (
+    ALLOWED_ORIGINS,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    MAX_UPLOAD_BYTES,
+    MAX_UPLOAD_MB,
+)
 from openai import OpenAI
 from schemas import (
     MAX_IMPORT_ITEMS,
@@ -30,18 +36,13 @@ from auth import (
     verify_google_token,
 )
 
-origins = [
-    "http://localhost:5173",  # React dev server
-    "http://127.0.0.1:5173",
-]
-
 app = FastAPI()
 
 # allow_credentials is what lets the session cookie travel: the frontend and API
 # are different origins, so a credentialed fetch is rejected without it.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],

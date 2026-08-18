@@ -17,6 +17,23 @@ COOKIE_SECURE = _env("COOKIE_SECURE", "false").lower() == "true"
 SESSION_COOKIE_NAME = "pdfx_session"
 SESSION_TTL_DAYS = 7
 
+# When the frontend and API are on different sites -- say the frontend on
+# Vercel and the API on Render -- a SameSite=Lax cookie is simply not sent,
+# and every request after sign-in looks like a guest. SameSite=None fixes
+# that, but browsers only honour it alongside Secure, so the two are tied
+# together: over HTTPS we go cross-site, locally over http we stay on Lax.
+COOKIE_SAMESITE = "none" if COOKIE_SECURE else "lax"
+
+# Origins permitted to make credentialed requests. Comma-separated so the
+# deployed frontend URL can be added without a code change.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in _env(
+        "ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+]
+
 # Largest PDF accepted by POST /api/extract. The bytes are held in memory and
 # base64-encoded into Postgres, which inflates them by roughly a third, so this
 # single number bounds both per-request memory and the stored row size.
