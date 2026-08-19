@@ -1,6 +1,14 @@
 import React, { useRef, useState } from "react";
 import { apiFetch } from "./apiConfig";
 
+// Checked here as well as on the server, because the host may reject an
+// oversized request before it ever reaches our code — on Vercel the ceiling is
+// 4.5MB, and what comes back is a platform error page rather than our own
+// message. Catching it before the upload starts gives the user a sentence that
+// explains itself.
+const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB) || 4;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+
 export default function PdfExtractor({ onExtracted }) {
   const [file, setFile] = useState(null);
   // A file input is uncontrolled -- React cannot drive its value, so clearing
@@ -13,6 +21,14 @@ export default function PdfExtractor({ onExtracted }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!file) return;
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setError(
+        `That file is ${mb} MB. The limit is ${MAX_UPLOAD_MB} MB — try a smaller PDF.`
+      );
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -60,9 +76,13 @@ export default function PdfExtractor({ onExtracted }) {
           ref={fileInputRef}
           type="file"
           accept="application/pdf"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            setFile(e.target.files?.[0] ?? null);
+            setError(null);
+          }}
           className="block w-full text-sm"
         />
+        <p className="text-xs text-gray-500">PDF, up to {MAX_UPLOAD_MB} MB.</p>
         <div className="flex gap-3">
           <button
             type="submit"
