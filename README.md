@@ -1,5 +1,7 @@
 # PDF Extractor
 
+**[pdf-extractor-opal.vercel.app](https://pdf-extractor-opal.vercel.app)**
+
 Upload an academic PDF and get its metadata — title, authors, year, DOI, URL, abstract and conclusion — pulled out into an editable table.
 
 Text is extracted locally with PyPDF2 and sent to **Google Gemini**, which returns structured JSON. Signed-in users keep their documents in Postgres and can reopen the original PDF in a modal; visitors who'd rather not sign in still get the full extraction flow, stored in their own browser.
@@ -27,7 +29,9 @@ The guest store writes through a field whitelist, so `pdf_base64` can never reac
 
 ### Authentication
 
-The browser obtains a Google ID token, which the backend verifies against Google's public keys (checking issuer, audience and `email_verified`). It then mints its own short JWT and returns it in an **httpOnly, SameSite=Lax cookie** — so the session token is never readable from JavaScript.
+The browser obtains a Google ID token, which the backend verifies against Google's public keys (checking issuer, audience and `email_verified`). It then mints its own short JWT and returns it in an **httpOnly cookie** — so the session token is never readable from JavaScript.
+
+`SameSite` follows `COOKIE_SECURE`: `Lax` locally over http, `None` once served over HTTPS. Deployed, the frontend and API are separate origins, and a `Lax` cookie is simply not sent across them — sign-in would appear to succeed and every subsequent request would look like a guest, with no error anywhere. Browsers only honour `SameSite=None` alongside `Secure`, which is why one flag drives both.
 
 Users are keyed on Google's stable `sub` claim, never on email, because email addresses can change hands.
 
@@ -86,6 +90,41 @@ npm run dev
 
 Open http://localhost:5173. **Use exactly that origin** — `127.0.0.1:5173` is a different origin to Google OAuth and to the CORS allowlist.
 
+## Deployment
+
+Deployed as **two Vercel projects from this one repository**, distinguished by Root Directory, with Postgres on [Neon](https://neon.tech).
+
+| Project | Root Directory | |
+| --- | --- | --- |
+| Frontend | `frontend` | Vite static build |
+| API | `backend` | FastAPI as a Vercel Function |
+
+The frontend reaches the API through `VITE_API_BASE_URL`; the API accepts it through `ALLOWED_ORIGINS`.
+
+### Environment variables
+
+**API project:** `GEMINI_API_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, plus `COOKIE_SECURE=true`, `ALLOWED_ORIGINS` (comma-separated, no trailing slashes) and `MAX_UPLOAD_MB`.
+
+**Frontend project:** `VITE_API_BASE_URL` (no trailing slash — paths are concatenated directly), `VITE_GOOGLE_CLIENT_ID`, `VITE_MAX_UPLOAD_MB`.
+
+Google's OAuth client also needs the deployed frontend URL under **Authorized JavaScript origins**, alongside the localhost one.
+
+### Migrations
+
+Nothing runs Alembic automatically — there is no deploy hook for it. Apply migrations from your machine, pointing at the deployed database for the duration of one command:
+
+```powershell
+cd backend
+$env:DATABASE_URL="the-neon-connection-string"
+.\.venv\Scripts\alembic.exe upgrade head
+```
+
+The variable lives only in that window, so `.env` continues to point at your local database afterwards. Forgetting to set it migrates the wrong database — which is quiet, since the command succeeds either way.
+
+### Upload size
+
+Vercel caps a function's request **and response** body at 4.5 MB, well under the 20 MB the backend accepts by design. The deployment therefore sets `MAX_UPLOAD_MB=4`, and the upload form checks the file size before sending — the platform rejects an oversized request before it reaches the application, so without that check the user would see a generic error page rather than an explanation.
+
 ## API
 
 | Method | Path | Auth | Purpose |
@@ -107,9 +146,8 @@ List and detail responses deliberately exclude `pdf_base64`, so the raw file is 
 
 Deliberate trade-offs for a demo, and what production would need instead:
 
-- **PDFs are stored base64-encoded in Postgres.** Simple and transactional, but it inflates each file ~33% and bloats the table. Object storage (S3, GCS) with a key column is the real answer.
-- **CORS origins are hardcoded** to localhost in `main.py`. Deployment needs these driven by an environment variable.
-- **Uploads are capped at 20 MB** (`MAX_UPLOAD_MB`) and read fully into memory. Larger files want streaming straight to object storage.
+- **PDFs are stored base64-encoded in Postgres.** Simple and transactional, but it inflates each file ~33% and bloats the table. Object storage (S3, GCS) with a key column is the real answer — and it would also lift the upload ceiling below, since the file would never pass through a function at all.
+- **Uploads are capped at 4 MB in the deployment** (20 MB is the code's own default) and read fully into memory. The lower figure is the host's request body limit, not a considered choice. Larger files want streaming straight to object storage.
 - **Only the first 30,000 characters** of a paper are sent to the model, which is enough for front-matter metadata but would miss a conclusion in a very long document.
 - **No rate limiting.** Every extraction costs an API call, so anything public-facing needs a quota.
 - **No automated test suite.** Behaviour has been verified manually and with throwaway scripts, not in CI.
