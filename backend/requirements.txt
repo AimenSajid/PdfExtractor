@@ -8,5 +8,9 @@ pydantic
 sqlalchemy
 psycopg2-binary
 alembic
-google-auth
+# The [requests] extra matters: google-auth treats its requests-based
+# transport as optional, and auth.py imports it. A local venv usually has
+# requests pulled in by something else, so this only surfaces on a clean
+# install -- as it did on the first deploy.
+google-auth[requests]
 pyjwt
