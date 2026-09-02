@@ -12,8 +12,6 @@ import { apiFetch } from "./apiConfig";
  * Keeping both behind the same shape means callers never branch on auth state.
  */
 
-// Distinct from AuthContext's "pdfx_guest_mode" flag, which stores something else
-// entirely (whether the visitor chose to skip signing in).
 const GUEST_KEY = "pdfx_guest_extractions";
 
 // Set once the user has declined to import their guest rows, so the offer is not

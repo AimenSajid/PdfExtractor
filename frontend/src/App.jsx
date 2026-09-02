@@ -13,11 +13,12 @@ import {
 } from "./dataStore";
 
 export default function App() {
-  const { user, loading, isGuest, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
   const [pendingImport, setPendingImport] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Swapping stores is the only place auth state affects data access.
   const store = useMemo(() => getStore(isAuthenticated), [isAuthenticated]);
@@ -124,6 +125,11 @@ export default function App() {
     setPendingImport(0);
   }, []);
 
+  const handleLogout = useCallback(async () => {
+    await logout();
+    setShowLogin(false);
+  }, [logout]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -132,8 +138,8 @@ export default function App() {
     );
   }
 
-  if (!isAuthenticated && !isGuest) {
-    return <LoginPage />;
+  if (!isAuthenticated && showLogin) {
+    return <LoginPage onBack={() => setShowLogin(false)} />;
   }
 
   return (
@@ -155,7 +161,7 @@ export default function App() {
                 {user.name || user.email}
               </span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
               >
                 Sign out
@@ -163,10 +169,7 @@ export default function App() {
             </div>
           ) : (
             <button
-              onClick={() => {
-                localStorage.removeItem("pdfx_guest_mode");
-                window.location.reload();
-              }}
+              onClick={() => setShowLogin(true)}
               className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
             >
               Sign in
@@ -174,7 +177,7 @@ export default function App() {
           )}
         </header>
 
-        {isGuest && !isAuthenticated && (
+        {!isAuthenticated && (
           <div className="mb-6 p-3 rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm">
             You&apos;re not signed in. Extracted documents are kept in this browser
             only and will be lost if you clear its data.{" "}

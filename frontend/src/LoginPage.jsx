@@ -3,8 +3,8 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "./AuthContext";
 import { GOOGLE_CLIENT_ID } from "./apiConfig";
 
-export default function LoginPage() {
-  const { loginWithGoogle, continueAsGuest } = useAuth();
+export default function LoginPage({ onBack }) {
+  const { loginWithGoogle } = useAuth();
   const [error, setError] = useState(null);
 
   async function handleSuccess(credentialResponse) {
@@ -45,15 +45,11 @@ export default function LoginPage() {
         <div className="border-t pt-6">
           <button
             type="button"
-            onClick={continueAsGuest}
+            onClick={onBack}
             className="text-sm text-gray-600 underline hover:text-gray-900"
           >
-            Continue without signing in
+            Back to extractor
           </button>
-          <p className="text-xs text-gray-400 mt-2">
-            Your documents stay in this browser only and aren&apos;t saved to your
-            account.
-          </p>
         </div>
       </div>
     </div>

@@ -9,16 +9,9 @@ import { apiFetch } from "./apiConfig";
 
 const AuthContext = createContext(null);
 
-// Remembers that the visitor explicitly chose to continue without an account, so
-// a page reload doesn't bounce them back to the sign-in screen.
-const GUEST_FLAG = "pdfx_guest_mode";
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isGuest, setIsGuest] = useState(
-    () => localStorage.getItem(GUEST_FLAG) === "true"
-  );
 
   // Restore an existing session on mount. /api/auth/me returns null rather than
   // 401 for signed-out visitors, so a null body here is a normal outcome.
@@ -59,8 +52,6 @@ export function AuthProvider({ children }) {
 
     const signedIn = await res.json();
     setUser(signedIn);
-    setIsGuest(false);
-    localStorage.removeItem(GUEST_FLAG);
     return signedIn;
   }, []);
 
@@ -73,24 +64,15 @@ export function AuthProvider({ children }) {
       // Clear local state regardless -- a failed network call shouldn't leave the
       // UI claiming the user is still signed in.
       setUser(null);
-      setIsGuest(false);
-      localStorage.removeItem(GUEST_FLAG);
     }
-  }, []);
-
-  const continueAsGuest = useCallback(() => {
-    setIsGuest(true);
-    localStorage.setItem(GUEST_FLAG, "true");
   }, []);
 
   const value = {
     user,
     loading,
-    isGuest,
     isAuthenticated: user !== null,
     loginWithGoogle,
     logout,
-    continueAsGuest,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
