@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { FileText } from "lucide-react";
 import { useAuth } from "./AuthContext";
@@ -8,6 +8,26 @@ import { Card, BackLink } from "./ui";
 export default function LoginPage({ onBack }) {
   const { loginWithGoogle } = useAuth();
   const [error, setError] = useState(null);
+
+  // Google's button takes a fixed pixel width (no "100%"), so a hardcoded
+  // value overflows a narrower card. Measure the actual space available and
+  // clamp to the 200-400px range Google's widget accepts.
+  const buttonSlotRef = useRef(null);
+  const [buttonWidth, setButtonWidth] = useState(360);
+
+  useEffect(() => {
+    const el = buttonSlotRef.current;
+    if (!el) return undefined;
+
+    const updateWidth = () => {
+      setButtonWidth(Math.max(200, Math.min(400, Math.floor(el.clientWidth))));
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   async function handleSuccess(credentialResponse) {
     setError(null);
@@ -42,7 +62,7 @@ export default function LoginPage({ onBack }) {
           </p>
 
           {GOOGLE_CLIENT_ID ? (
-            <div className="flex justify-center">
+            <div ref={buttonSlotRef} className="flex justify-center">
               <GoogleLogin
                 onSuccess={handleSuccess}
                 onError={() => setError("Google sign-in was cancelled or failed.")}
@@ -51,7 +71,7 @@ export default function LoginPage({ onBack }) {
                 size="large"
                 shape="pill"
                 text="signin_with"
-                width="360"
+                width={String(buttonWidth)}
               />
             </div>
           ) : (
