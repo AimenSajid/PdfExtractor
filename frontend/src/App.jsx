@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { FileText, ShieldCheck, CloudUpload, X } from "lucide-react";
 import PdfExtractor from "./PdfExtractor";
 import FileList from "./FileList";
 import LoginPage from "./LoginPage";
 import { useAuth } from "./AuthContext";
+import { Avatar, Badge, Button, IconButton } from "./ui";
 import {
   apiStore,
   declineImport,
@@ -19,6 +21,7 @@ export default function App() {
   const [pendingImport, setPendingImport] = useState(0);
   const [importing, setImporting] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
 
   // Swapping stores is the only place auth state affects data access.
   const store = useMemo(() => getStore(isAuthenticated), [isAuthenticated]);
@@ -132,8 +135,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-page">
+        <p className="text-sm text-subtle">Loading…</p>
       </div>
     );
   }
@@ -143,96 +146,129 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
-      <div className="w-full max-w-4xl">
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-lg font-bold">PDF Extractor</h1>
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              {user.picture && (
-                <img
-                  src={user.picture}
-                  alt=""
-                  className="w-8 h-8 rounded-full"
-                  referrerPolicy="no-referrer"
-                />
-              )}
-              <span className="text-sm text-gray-600">
-                {user.name || user.email}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowLogin(true)}
-              className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
-            >
-              Sign in
-            </button>
-          )}
-        </header>
-
-        {!isAuthenticated && (
-          <div className="mb-6 p-3 rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm">
-            You&apos;re not signed in. Extracted documents are kept in this browser
-            only and will be lost if you clear its data.{" "}
-            <strong>Sign in to save them to your account.</strong>
+    <div className="flex min-h-screen flex-col bg-page">
+      <header className="flex h-16 flex-none items-center justify-between border-b border-line-subtle bg-nav px-6 sm:px-10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-text">
+            <FileText size={17} />
           </div>
-        )}
-
-        {pendingImport > 0 && (
-          <div className="mb-6 p-3 rounded border border-blue-300 bg-blue-50 text-blue-900 text-sm flex items-center justify-between gap-4">
-            <span>
-              You have {pendingImport} document{pendingImport === 1 ? "" : "s"}{" "}
-              saved in this browser from before you signed in. Import{" "}
-              {pendingImport === 1 ? "it" : "them"} into your account?
-              <span className="block text-xs text-blue-700 mt-1">
-                The extracted details carry over, but the original PDFs were never
-                uploaded and so cannot be viewed.
-              </span>
+          <span className="font-display text-[17px] font-extrabold tracking-tight text-strong">
+            PDF Extractor
+          </span>
+        </div>
+        {isAuthenticated ? (
+          <div className="flex items-center gap-3.5">
+            <Avatar name={user.name || user.email} picture={user.picture} size={30} />
+            <span className="hidden text-sm text-body sm:inline">
+              {user.name || user.email}
             </span>
-            <span className="flex gap-2 shrink-0">
-              <button
-                onClick={handleImportGuestRows}
-                disabled={importing}
-                className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
-              >
-                {importing ? "Importing..." : "Import"}
-              </button>
-              <button
-                onClick={handleDeclineImport}
-                disabled={importing}
-                className="px-3 py-1 border border-blue-300 rounded disabled:opacity-50"
-              >
-                Not now
-              </button>
-            </span>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              Sign Out
+            </Button>
           </div>
-        )}
-
-        <PdfExtractor onExtracted={handleExtracted} />
-
-        {error && (
-          <p className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-700 text-sm">
-            {error}
-          </p>
-        )}
-
-        {files.length > 0 ? (
-          <FileList
-            files={files}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-            canViewPdf={isAuthenticated}
-          />
         ) : (
-          <p className="text-gray-500 text-center mt-4">No files uploaded yet.</p>
+          <Button variant="secondary" size="sm" onClick={() => setShowLogin(true)}>
+            Sign In
+          </Button>
         )}
+      </header>
+
+      <div className="flex-1 overflow-auto px-6 py-8 sm:px-10">
+        <div className="mx-auto flex max-w-[1120px] flex-col gap-6">
+          {!isAuthenticated && !noticeDismissed && (
+            <div className="flex items-center gap-4 rounded-lg border border-bronze-200 bg-accent-soft p-4">
+              <ShieldCheck size={18} className="shrink-0 text-bronze-600" />
+              <p className="flex-1 text-sm leading-relaxed text-bronze-600">
+                You&apos;re working as a guest. Documents are kept in this browser
+                only — they aren&apos;t saved to an account, and clearing your
+                browser data removes them.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setShowLogin(true)}
+              >
+                Sign In To Save
+              </Button>
+              <IconButton
+                label="Dismiss notice"
+                className="shrink-0"
+                onClick={() => setNoticeDismissed(true)}
+              >
+                <X size={16} />
+              </IconButton>
+            </div>
+          )}
+
+          {pendingImport > 0 && (
+            <div className="rounded-card border border-bronze-200 bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-5">
+                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-md bg-accent-soft text-bronze-600">
+                  <CloudUpload size={19} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[15px] font-semibold text-strong">
+                    You have {pendingImport} document{pendingImport === 1 ? "" : "s"}{" "}
+                    saved in this browser from before you signed in. Import{" "}
+                    {pendingImport === 1 ? "it" : "them"} into your account?
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    Only the extracted metadata comes across. The original PDF
+                    files stay in this browser, so imported rows won&apos;t have a
+                    View PDF action.
+                  </p>
+                </div>
+                <div className="flex flex-none gap-2.5">
+                  <Button variant="ghost" size="sm" disabled={importing} onClick={handleDeclineImport}>
+                    Not Now
+                  </Button>
+                  <Button size="sm" disabled={importing} onClick={handleImportGuestRows}>
+                    {importing ? "Importing…" : "Import"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <PdfExtractor onExtracted={handleExtracted} />
+
+          {error && (
+            <p className="rounded-card border border-status-red bg-status-red-bg p-3 text-sm text-status-red">
+              {error}
+            </p>
+          )}
+
+          <div className="flex items-baseline justify-between pt-2">
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-xl font-bold tracking-tight text-strong">
+                Extracted documents
+              </h2>
+              <Badge>
+                {files.length === 1 ? "1 document" : `${files.length} documents`}
+              </Badge>
+            </div>
+          </div>
+
+          {files.length > 0 ? (
+            <FileList
+              files={files}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+              canViewPdf={isAuthenticated}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-card border border-line-subtle bg-sunken py-14 text-center">
+              <FileText size={30} className="text-subtle" />
+              <p className="text-[17px] font-semibold text-strong">
+                No files uploaded yet.
+              </p>
+              <p className="text-sm text-muted">
+                Your extracted papers will appear here.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

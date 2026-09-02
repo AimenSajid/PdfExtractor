@@ -1,7 +1,66 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Cool sand/slate surface ramp used by this app's design. */
+  --bg-page: #edf2f4;
+  --bg-page-alt: #f5f9fa;
+  --surface-card: #ffffff;
+  --surface-sunken: #eaf1f3;
+  --surface-raised: #ffffff;
+  --surface-nav: #f6fafb;
+  --surface-hover: #e2ecef;
+  --surface-active: #d5e4e9;
+
+  --text-strong: #22333e;
+  --text-body: #2e4351;
+  --text-muted: #5c7686;
+  --text-subtle: #7f96a2;
+  --text-on-dark: #f4f8f9;
+
+  --border-subtle: #d8e4e8;
+  --border-strong: #bed2d9;
+  --border-dashed: #a9c7d0;
+
+  --action-primary: #3d5c6d;
+  --action-primary-hover: #2f4a59;
+  --action-primary-text: #f4f8f9;
+  --action-secondary-bg: #ffffff;
+  --action-secondary-border: #c7dae0;
+  --action-secondary-text: #22333e;
+
+  --accent: #766993;
+  --accent-soft: #f0ecf8;
+  --focus-ring: #8e80ae;
+  --bronze-200: #d2c9e4;
+  --bronze-600: #584d74;
+
+  --status-blue-bg: #dfeaee;
+  --status-blue: #3d5c6d;
+  --status-green-bg: #e1edea;
+  --status-green: #3f7566;
+  --status-amber-bg: #f3eddd;
+  --status-red-bg: #f2e4e4;
+  --status-red: #9b4f4f;
+
+  --shadow-xs: 0 1px 2px rgba(34, 51, 62, 0.05);
+  --shadow-sm: 0 1px 3px rgba(34, 51, 62, 0.06), 0 1px 2px rgba(34, 51, 62, 0.04);
+  --shadow-md: 0 4px 14px rgba(34, 51, 62, 0.08), 0 1px 3px rgba(34, 51, 62, 0.04);
+  --shadow-lg: 0 12px 32px rgba(34, 51, 62, 0.11), 0 2px 6px rgba(34, 51, 62, 0.05);
+  --shadow-float: 0 22px 48px rgba(34, 51, 62, 0.16);
+  --ring-focus: 0 0 0 3px rgba(118, 105, 147, 0.35);
+}
+
 html, body, #root {
   height: 100%;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-body);
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }

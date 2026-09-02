@@ -48,8 +48,7 @@ export default function FileList({
   };
 
   return (
-    <div className="mt-6 overflow-x-auto">
-      <h2 className="text-xl font-bold mb-2">Extracted Files</h2>
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse border border-gray-300 text-sm">
         <thead className="bg-gray-100">
           <tr>
