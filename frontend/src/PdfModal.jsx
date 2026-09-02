@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Download, FileText, X } from "lucide-react";
 import { apiFetch } from "./apiConfig";
+import { IconButton } from "./ui";
 
 /**
  * PdfModal -- full-screen modal that renders one extraction's stored PDF.
@@ -202,7 +204,7 @@ export default function PdfModal({ extractionId, filename, onClose }) {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) requestClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(34,51,62,0.35)] p-4"
     >
       <div
         ref={dialogRef}
@@ -210,40 +212,51 @@ export default function PdfModal({ extractionId, filename, onClose }) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="flex h-[90vh] max-h-[900px] w-[90vw] max-w-6xl flex-col overflow-hidden rounded-lg bg-white shadow-xl outline-none"
+        className="flex h-[90vh] max-h-[900px] w-[90vw] max-w-6xl flex-col overflow-hidden rounded-xl border border-line-subtle bg-card shadow-float outline-none"
       >
-        <div className="flex items-center justify-between gap-4 border-b px-4 py-3">
+        <div className="flex items-center gap-3 border-b border-line-subtle px-5 py-4">
+          <FileText size={18} className="shrink-0 text-muted" />
           <h2
             id={titleId}
-            className="truncate text-sm font-bold text-gray-900"
+            className="flex-1 truncate font-mono text-[12.5px] text-muted"
             title={displayName}
           >
             {displayName}
           </h2>
-          <button
-            type="button"
+          {objectUrl && (
+            <a
+              href={objectUrl}
+              download={displayName}
+              className="inline-flex h-[34px] shrink-0 items-center gap-2 rounded-button px-3 text-sm font-semibold text-body transition-colors hover:bg-surface-hover"
+            >
+              <Download size={16} />
+              Download
+            </a>
+          )}
+          <IconButton
+            label="Close PDF viewer"
+            variant="outline"
+            className="shrink-0"
             onClick={requestClose}
-            aria-label="Close PDF viewer"
-            className="shrink-0 rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900"
           >
-            Close
-          </button>
+            <X size={16} />
+          </IconButton>
         </div>
 
-        <div className="relative flex-1 bg-gray-50">
+        <div className="relative flex-1 bg-sunken">
           {loading && (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-gray-500">Loading PDF...</p>
+              <p className="text-sm text-subtle">Loading PDF…</p>
             </div>
           )}
 
           {!loading && error && (
             <div className="flex h-full items-center justify-center p-6">
               <div
-                className={`max-w-md rounded border p-4 text-center text-sm ${
+                className={`max-w-md rounded-card border p-4 text-center text-sm ${
                   error.kind === "missing"
-                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-red-300 bg-red-50 text-red-800"
+                    ? "border-bronze-200 bg-accent-soft text-bronze-600"
+                    : "border-status-red bg-status-red-bg text-status-red"
                 }`}
               >
                 <p>{error.message}</p>

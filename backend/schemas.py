@@ -47,16 +47,23 @@ class ExtractionUpdate(BaseModel):
 
 # Response shape for extraction endpoints. Deliberately excludes pdf_base64
 # (never used by the frontend) so list/detail responses don't ship the raw
-# PDF content on every request.
+# PDF content on every request. has_pdf lets the UI show whether a PDF is
+# actually viewable without shipping the bytes themselves -- computed in the
+# database (pdf_base64 IS NOT NULL) rather than loaded and checked in Python.
 class ExtractionOut(FileDetail):
+    has_pdf: bool = False
+
     model_config = ConfigDict(from_attributes=True)
 
 # Result of POST /api/extract, which serves both tiers. For guests nothing is
 # persisted, so there is no row id -- the frontend assigns its own local id when
-# saving to localStorage.
+# saving to localStorage. has_pdf defaults to False, which is correct for guests
+# (nothing was ever stored) and is set True explicitly by crud.create_extraction
+# for the signed-in path.
 class ExtractionResult(ExtractResponse):
     id: Optional[int] = None
     filename: Optional[str] = None
+    has_pdf: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

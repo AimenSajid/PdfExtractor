@@ -89,6 +89,9 @@ def create_extraction(
     db.add(extraction)
     db.commit()
     db.refresh(extraction)
+    # Not a mapped column (see get_extraction) -- set directly since this path
+    # always has the bytes in hand already, no need to ask the database.
+    extraction.has_pdf = bool(pdf_base64)
     return extraction
 
 def create_extractions_bulk(
@@ -132,15 +135,24 @@ def create_extractions_bulk(
 def get_extraction(
     db: Session, extraction_id: int, user_id: int
 ) -> Optional[models.Extraction]:
-    return (
+    row = (
         db.query(models.Extraction)
         .options(load_only(*_EXTRACTION_LIST_COLUMNS))
+        .add_columns(models.Extraction.pdf_base64.isnot(None).label("has_pdf"))
         .filter(
             models.Extraction.id == extraction_id,
             models.Extraction.user_id == user_id,
         )
         .first()
     )
+    if row is None:
+        return None
+    extraction, has_pdf = row
+    # A plain instance attribute, not a mapped column -- ExtractionOut reads it
+    # via from_attributes, and it survives update_extraction's db.refresh()
+    # because refresh only reloads attributes the ORM actually tracks.
+    extraction.has_pdf = has_pdf
+    return extraction
 
 def get_extraction_pdf(
     db: Session, extraction_id: int, user_id: int
@@ -162,13 +174,19 @@ def get_extraction_pdf(
     )
 
 def get_all_extractions(db: Session, user_id: int) -> list[models.Extraction]:
-    return (
+    rows = (
         db.query(models.Extraction)
         .options(load_only(*_EXTRACTION_LIST_COLUMNS))
+        .add_columns(models.Extraction.pdf_base64.isnot(None).label("has_pdf"))
         .filter(models.Extraction.user_id == user_id)
         .order_by(models.Extraction.id.asc())
         .all()
     )
+    extractions = []
+    for extraction, has_pdf in rows:
+        extraction.has_pdf = has_pdf
+        extractions.append(extraction)
+    return extractions
 
 def update_extraction(
     db: Session, extraction_id: int, updates: dict, user_id: int
