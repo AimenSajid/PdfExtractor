@@ -17,12 +17,18 @@ COOKIE_SECURE = _env("COOKIE_SECURE", "false").lower() == "true"
 SESSION_COOKIE_NAME = "pdfx_session"
 SESSION_TTL_DAYS = 7
 
-# When the frontend and API are on different sites -- say the frontend on
-# Vercel and the API on Render -- a SameSite=Lax cookie is simply not sent,
-# and every request after sign-in looks like a guest. SameSite=None fixes
-# that, but browsers only honour it alongside Secure, so the two are tied
-# together: over HTTPS we go cross-site, locally over http we stay on Lax.
-COOKIE_SAMESITE = "none" if COOKIE_SECURE else "lax"
+# The frontend proxies /api/* through to this service (see
+# frontend/vercel.json's rewrites), so from the browser's perspective every
+# request -- page load and API call alike -- is same-site. SameSite=Lax is
+# therefore always correct here. SameSite=None was tried first (needed only
+# when the frontend calls the API's own cross-site domain directly), but
+# Safari's ITP -- and increasingly Chrome -- silently drops a cookie set by a
+# cross-site fetch response: sign-in would appear to succeed (the response
+# body still comes back) while the cookie itself was never actually stored,
+# so the very next request read as a guest. Routing through the proxy so the
+# cookie is same-site avoids that class of bug entirely rather than working
+# around it.
+COOKIE_SAMESITE = "lax"
 
 # Origins permitted to make credentialed requests. Comma-separated so the
 # deployed frontend URL can be added without a code change.
