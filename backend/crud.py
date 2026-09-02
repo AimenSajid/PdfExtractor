@@ -179,7 +179,10 @@ def get_all_extractions(db: Session, user_id: int) -> list[models.Extraction]:
         .options(load_only(*_EXTRACTION_LIST_COLUMNS))
         .add_columns(models.Extraction.pdf_base64.isnot(None).label("has_pdf"))
         .filter(models.Extraction.user_id == user_id)
-        .order_by(models.Extraction.id.asc())
+        # No created_at column exists on this table, but id is an
+        # auto-incrementing primary key, so descending id is exactly
+        # descending creation order -- most recently added first.
+        .order_by(models.Extraction.id.desc())
         .all()
     )
     extractions = []

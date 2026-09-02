@@ -30,7 +30,8 @@ export default function App() {
     async (extractionResult) => {
       try {
         const row = await store.create(extractionResult);
-        setFiles((prev) => [...prev, row]);
+        // Newest first, matching the store's list() order.
+        setFiles((prev) => [row, ...prev]);
         setError(null);
       } catch (err) {
         // A guest storage write can fail (quota, private mode) -- show it rather
@@ -112,7 +113,12 @@ export default function App() {
       const imported = await apiStore.importMany(rows);
       // Only discard the local copy once the server has confirmed the rows.
       localStore.clear();
-      setFiles((prev) => [...prev, ...imported]);
+      // Imported rows get fresh, higher ids than anything already in the
+      // account, but the batch itself is oldest-first (creation order), so
+      // sort by id descending rather than assuming a fixed merge position.
+      setFiles((prev) =>
+        [...imported, ...prev].sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+      );
       setPendingImport(0);
       setError(null);
     } catch (err) {

@@ -140,7 +140,9 @@ function writeGuestRows(rows) {
 
 const localStore = {
   async list() {
-    return readGuestRows();
+    // Stored oldest-first (create() appends); shown newest-first to match the
+    // API store. Reversing on read keeps the append-based writes untouched.
+    return readGuestRows().reverse();
   },
 
   async create(extractionResult) {
