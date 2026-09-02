@@ -86,22 +86,32 @@ function DocumentCard({ file, onUpdate, onDelete, onView, canView, badgeTone, ba
 
   return (
     <Card className="p-5 sm:p-6">
+      {/* On narrow screens the filename would otherwise be squeezed to a few
+          visible characters sharing a row with the badge and delete button --
+          give it order-2 so flex-wrap drops it to its own full-width line,
+          matching the design's mobile layout. Reset to normal order at sm:. */}
       <div className="flex flex-wrap items-center gap-3 border-b border-line-subtle pb-4">
         <input
           value={draft.filename}
           onChange={set("filename")}
           onBlur={commit("filename")}
           onKeyDown={commitOnEnter}
-          className="min-w-0 flex-1 rounded-input border border-transparent bg-transparent px-2 py-1 font-mono text-xs text-muted outline-none transition-colors hover:bg-surface-hover focus:border-focus focus:bg-card focus:text-strong focus:ring-2 focus:ring-focus sm:flex-none sm:basis-[340px]"
+          className="order-2 w-full min-w-0 rounded-input border border-transparent bg-transparent px-2 py-1 font-mono text-xs text-muted outline-none transition-colors hover:bg-surface-hover focus:border-focus focus:bg-card focus:text-strong focus:ring-2 focus:ring-focus sm:order-none sm:w-auto sm:flex-none sm:basis-[340px]"
         />
-        <Badge tone={badgeTone}>{badgeLabel}</Badge>
-        <span className="flex-1" />
+        <Badge tone={badgeTone} className="order-1 sm:order-none">
+          {badgeLabel}
+        </Badge>
+        <span className="order-1 flex-1 sm:order-none" />
         {canView && (
-          <Button variant="secondary" size="sm" onClick={onView}>
+          <Button variant="secondary" size="sm" className="order-1 sm:order-none" onClick={onView}>
             View PDF
           </Button>
         )}
-        <IconButton label="Delete document" onClick={() => onDelete(file.id)}>
+        <IconButton
+          label="Delete document"
+          className="order-1 sm:order-none"
+          onClick={() => onDelete(file.id)}
+        >
           <Trash2 size={16} />
         </IconButton>
       </div>

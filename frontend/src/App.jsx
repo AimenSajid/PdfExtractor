@@ -176,54 +176,71 @@ export default function App() {
       <div className="flex-1 overflow-auto px-6 py-8 sm:px-10">
         <div className="mx-auto flex max-w-[1120px] flex-col gap-6">
           {!isAuthenticated && !noticeDismissed && (
-            <div className="flex items-center gap-4 rounded-lg border border-bronze-200 bg-accent-soft p-4">
-              <ShieldCheck size={18} className="shrink-0 text-bronze-600" />
-              <p className="flex-1 text-sm leading-relaxed text-bronze-600">
-                You&apos;re working as a guest. Documents are kept in this browser
-                only — they aren&apos;t saved to an account, and clearing your
-                browser data removes them.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="shrink-0"
-                onClick={() => setShowLogin(true)}
-              >
-                Sign In To Save
-              </Button>
-              <IconButton
-                label="Dismiss notice"
-                className="shrink-0"
-                onClick={() => setNoticeDismissed(true)}
-              >
-                <X size={16} />
-              </IconButton>
+            <div className="flex flex-col gap-3 rounded-lg border border-bronze-200 bg-accent-soft p-4 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-start gap-3 sm:flex-1 sm:items-center">
+                <ShieldCheck size={18} className="mt-0.5 shrink-0 text-bronze-600 sm:mt-0" />
+                <p className="text-sm leading-relaxed text-bronze-600">
+                  You&apos;re working as a guest. Documents are kept in this
+                  browser only — they aren&apos;t saved to an account, and
+                  clearing your browser data removes them.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 sm:shrink-0">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setShowLogin(true)}
+                >
+                  Sign In To Save
+                </Button>
+                <IconButton
+                  label="Dismiss notice"
+                  className="shrink-0"
+                  onClick={() => setNoticeDismissed(true)}
+                >
+                  <X size={16} />
+                </IconButton>
+              </div>
             </div>
           )}
 
           {pendingImport > 0 && (
             <div className="rounded-card border border-bronze-200 bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-5">
-                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-md bg-accent-soft text-bronze-600">
-                  <CloudUpload size={19} />
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+                <div className="flex items-start gap-4 sm:flex-1 sm:items-center">
+                  <div className="flex h-10 w-10 flex-none items-center justify-center rounded-md bg-accent-soft text-bronze-600">
+                    <CloudUpload size={19} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[15px] font-semibold text-strong">
+                      You have {pendingImport} document{pendingImport === 1 ? "" : "s"}{" "}
+                      saved in this browser from before you signed in. Import{" "}
+                      {pendingImport === 1 ? "it" : "them"} into your account?
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      Only the extracted metadata comes across. The original PDF
+                      files stay in this browser, so imported rows won&apos;t have a
+                      View PDF action.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-[15px] font-semibold text-strong">
-                    You have {pendingImport} document{pendingImport === 1 ? "" : "s"}{" "}
-                    saved in this browser from before you signed in. Import{" "}
-                    {pendingImport === 1 ? "it" : "them"} into your account?
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    Only the extracted metadata comes across. The original PDF
-                    files stay in this browser, so imported rows won&apos;t have a
-                    View PDF action.
-                  </p>
-                </div>
-                <div className="flex flex-none gap-2.5">
-                  <Button variant="ghost" size="sm" disabled={importing} onClick={handleDeclineImport}>
+                <div className="flex gap-2.5 sm:flex-none">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    disabled={importing}
+                    onClick={handleDeclineImport}
+                  >
                     Not Now
                   </Button>
-                  <Button size="sm" disabled={importing} onClick={handleImportGuestRows}>
+                  <Button
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    disabled={importing}
+                    onClick={handleImportGuestRows}
+                  >
                     {importing ? "Importing…" : "Import"}
                   </Button>
                 </div>

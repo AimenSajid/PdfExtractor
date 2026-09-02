@@ -204,7 +204,7 @@ export default function PdfModal({ extractionId, filename, onClose }) {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) requestClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(34,51,62,0.35)] p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(34,51,62,0.35)] sm:p-4"
     >
       <div
         ref={dialogRef}
@@ -212,7 +212,7 @@ export default function PdfModal({ extractionId, filename, onClose }) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="flex h-[90vh] max-h-[900px] w-[90vw] max-w-6xl flex-col overflow-hidden rounded-xl border border-line-subtle bg-card shadow-float outline-none"
+        className="flex h-full w-full flex-col overflow-hidden border border-line-subtle bg-card shadow-float outline-none sm:h-[90vh] sm:max-h-[900px] sm:w-[90vw] sm:max-w-6xl sm:rounded-xl"
       >
         <div className="flex items-center gap-3 border-b border-line-subtle px-5 py-4">
           <FileText size={18} className="shrink-0 text-muted" />
