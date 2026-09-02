@@ -61,6 +61,12 @@ export default function PdfExtractor({ onExtracted }) {
 
       const data = await res.json();
       onExtracted(data);
+      // Clear the form so the dropzone doesn't keep showing the file that was
+      // just extracted -- Reset also bumps resetCount to remount the Dropzone's
+      // hidden input, otherwise re-picking the same file next time wouldn't
+      // fire a change event.
+      setFile(null);
+      setResetCount((n) => n + 1);
     } catch (err) {
       setError(err.message);
     } finally {
