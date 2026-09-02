@@ -64,3 +64,8 @@ body {
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes barslide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}

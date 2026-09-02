@@ -1,5 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
+import { FileText } from "lucide-react";
 import { apiFetch } from "./apiConfig";
+import { Button, Card, Dropzone } from "./ui";
 
 // Checked here as well as on the server, because the host may reject an
 // oversized request before it ever reaches our code — on Vercel the ceiling is
@@ -11,13 +13,20 @@ const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 export default function PdfExtractor({ onExtracted }) {
   const [file, setFile] = useState(null);
-  // A file input is uncontrolled -- React cannot drive its value, so clearing
-  // the `file` state alone leaves the chosen filename on screen. Resetting the
-  // DOM node is the only way to actually deselect it.
-  const fileInputRef = useRef(null);
+  // The Dropzone owns an uncontrolled file input internally; remounting it via
+  // this key is what actually clears its selection on Reset (a browser file
+  // input's change event does not fire again for re-picking the same file
+  // otherwise).
+  const [resetCount, setResetCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSlowMessage, setShowSlowMessage] = useState(false);
+
+  function handleFileSelected(selected) {
+    setFile(selected);
+    setError(null);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!file) return;
@@ -60,50 +69,73 @@ export default function PdfExtractor({ onExtracted }) {
       setLoading(false);
     }
   }
-  const handleReset = () => {
+
+  function handleReset() {
     setFile(null);
     setError(null);
-    // Clearing the state is not enough -- without this the filename stays
-    // visible, and re-picking the same file would fire no change event.
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setResetCount((n) => n + 1);
   }
 
   return (
-    <div className="mb-8 p-6 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-bold mb-2">Upload PDF</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => {
-            setFile(e.target.files?.[0] ?? null);
-            setError(null);
-          }}
-          className="block w-full text-sm"
-        />
-        <p className="text-xs text-gray-500">PDF, up to {MAX_UPLOAD_MB} MB.</p>
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={!file || loading}
-            className="px-4 py-2 bg-black text-white rounded"
-          >
-            {loading ? "Processing..." : "Upload & Extract"}
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-4 py-2 border rounded"
-          >
-            Reset
-          </button>
+    <Card className="p-6">
+      <form onSubmit={handleSubmit}>
+        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+          <Dropzone
+            key={resetCount}
+            title="Drag & drop your PDF here"
+            formats="PDF"
+            maxSizeLabel={`${MAX_UPLOAD_MB}MB`}
+            buttonLabel="Choose File"
+            accept="application/pdf"
+            onFileSelected={handleFileSelected}
+          />
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="mb-2 font-display text-xl font-bold tracking-tight text-strong">
+                Upload a paper
+              </h2>
+              <p className="text-sm leading-relaxed text-muted">
+                We read the PDF to pull out title, authors, year, DOI, URL,
+                abstract and conclusion.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-input border border-line-subtle bg-sunken px-3.5 py-3">
+              <FileText size={17} className="shrink-0 text-muted" />
+              <span className="flex-1 truncate text-sm text-body">
+                {file ? file.name : `No file chosen — max ${MAX_UPLOAD_MB}MB`}
+              </span>
+            </div>
+
+            {loading && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-body">Extracting metadata…</span>
+                <div className="h-1.5 overflow-hidden rounded-full bg-line-subtle">
+                  <div
+                    className="h-full w-[30%] rounded-full bg-accent"
+                    style={{ animation: "barslide 1.1s cubic-bezier(0.2,0.8,0.2,1) infinite" }}
+                  />
+                </div>
+                {showSlowMessage && (
+                  <p className="text-sm text-accent">This may take a while…</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2.5">
+              <Button type="submit" disabled={!file || loading}>
+                {loading ? "Processing…" : "Upload & Extract"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleReset}>
+                Reset
+              </Button>
+            </div>
+
+            {error && <p className="text-sm text-status-red">{error}</p>}
+          </div>
         </div>
-        {loading && showSlowMessage && (
-          <p className="text-teal-600 text-sm mt-2">This may take a while...</p>
-        )}
-        {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
       </form>
-    </div>
+    </Card>
   );
 }
