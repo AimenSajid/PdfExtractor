@@ -1,9 +1,25 @@
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 import models
+
+# ExtractionOut never includes pdf_base64 (the README calls this out explicitly),
+# so queries that back it should never pull that column out of the database
+# either -- it's often the largest value in the row by a wide margin.
+_EXTRACTION_LIST_COLUMNS = (
+    models.Extraction.id,
+    models.Extraction.filename,
+    models.Extraction.title,
+    models.Extraction.authors,
+    models.Extraction.year,
+    models.Extraction.doi,
+    models.Extraction.url,
+    models.Extraction.abstract,
+    models.Extraction.conclusion,
+    models.Extraction.user_id,
+)
 
 # --- users -------------------------------------------------------------------
 
@@ -118,6 +134,7 @@ def get_extraction(
 ) -> Optional[models.Extraction]:
     return (
         db.query(models.Extraction)
+        .options(load_only(*_EXTRACTION_LIST_COLUMNS))
         .filter(
             models.Extraction.id == extraction_id,
             models.Extraction.user_id == user_id,
@@ -147,6 +164,7 @@ def get_extraction_pdf(
 def get_all_extractions(db: Session, user_id: int) -> list[models.Extraction]:
     return (
         db.query(models.Extraction)
+        .options(load_only(*_EXTRACTION_LIST_COLUMNS))
         .filter(models.Extraction.user_id == user_id)
         .order_by(models.Extraction.id.asc())
         .all()
